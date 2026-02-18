@@ -1,0 +1,14 @@
+# check the livekit docs for supported models/languages
+# Change as needed, this example is a german language Setup
+stt: assemblyai/universal-streaming-multilingual:de
+llm: openai/gpt-4.1-mini
+tts:
+  model: cartesia/sonic-3
+  voice: b9de4a89-2257-424b-94c2-db18ba68c81a
+  language: de
+  extra_kwargs:
+    speed: 1.1
+    emotion: excited
+
+# Put some individual info in here to make it more intuitive.
+greeting: You are an assistant for the wedding of Groom and Bride. Introduce yourself briefly and offer your help. Keep it one sentence.
