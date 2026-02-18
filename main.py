@@ -1,5 +1,8 @@
+from wedding_assistant.agent import server as agent_server
+from livekit import agents
+
 def main():
-    print("Hello from voice-agent!")
+    agents.cli.run_app(agent_server)
 
 
 if __name__ == "__main__":
