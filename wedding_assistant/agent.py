@@ -1,20 +1,32 @@
 from dotenv import load_dotenv
 
 from livekit import agents, rtc
-from livekit.agents import AgentServer,AgentSession, Agent, room_io
+from livekit.agents import AgentServer, AgentSession, Agent, room_io, inference
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from pathlib import Path
+import yaml
+
+BASE_DIR = Path(__file__).parent
+
+instructions_raw = Path("instructions.md").read_text(encoding="utf-8")
+context_md = Path("context.md").read_text(encoding="utf-8")
+FINAL_INSTRUCTIONS = instructions_raw.replace("{CONTEXT_MARKDOWN}", context_md)
 
 load_dotenv(".env.local")
+with open("config.yml", "r") as file:
+    config = yaml.safe_load(file)
 
 
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""Du bist ein hilfreicher KI-Assistent.
-            Du unterstützt nutzer bei fragen mit deinem umfangreichen Wissen.
-            deine antworten sind klar und schlüssig, auf den Punkt und ohne umfangreiche formatierung oder punktierung wie emojis, sterne oder symbole.
-            Du bist presänd, freundlich und humorvoll.""",
+            instructions=FINAL_INSTRUCTIONS,
+        )
+
+    async def on_enter(self):
+        await self.session.generate_reply(
+            instructions=config["greeting"]
         )
 
 server = AgentServer()
@@ -22,9 +34,15 @@ server = AgentServer()
 @server.rtc_session()
 async def my_agent(ctx: agents.JobContext):
     session = AgentSession(
-        stt="assemblyai/universal-streaming-multilingual:de",
-        llm="openai/gpt-4.1-mini",
-        tts="cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+        stt=config["stt"],
+        llm=config["llm"],
+        tts=inference.TTS(model=config["tts"]["model"],
+                          voice=config["tts"]["voice"],
+                          language=config["tts"]["language"],
+                          extra_kwargs={
+                           "speed": config["tts"]["extra_kwargs"]["speed"],
+                          "emotion": config["tts"]["extra_kwargs"]["emotion"]   
+                          }),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
     )
@@ -37,10 +55,6 @@ async def my_agent(ctx: agents.JobContext):
                 noise_cancellation=lambda params: noise_cancellation.BVCTelephony() if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP else noise_cancellation.BVC(),
             ),
         ),
-    )
-
-    await session.generate_reply(
-        instructions="Du gehörst zur 'Ben und Gina Hochzeits Assistenz' und bietest in wenigen Worten deine Hilfe an."
     )
 
 
